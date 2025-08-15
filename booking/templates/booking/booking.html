@@ -1,20 +1,24 @@
 {% extends 'booking/base.html' %}
+{% load static %}
 
-{% block title %}{{ page_title }}{% endblock %}
+{% block title %}{{ page_title|default:"Бронирование" }}{% endblock %}
 
 {% block content %}
-    <h1>{{ page_title }}</h1>
-
-    <hr>
+    <h1>{{ page_title|default:"Бронирование" }}</h1>
+    <hr style="border-color: #333; margin: 30px 0;">
 
     {# Step 0: Room Selection #}
     {% if step == 0 %}
         <h2>Шаг 1: Выберите зал</h2>
-        <div class="rooms">
+        <div class="card-grid">
             {% for room in rooms %}
-            <div class="room">
-                <h3><a href="?room={{ room.id }}">{{ room.title }}</a></h3>
-                <p>{{ room.description|truncatewords:20 }}</p>
+            <div class="card">
+                {# Here we would ideally use a room-specific image #}
+                <img src="{% static 'images/z-6-sq.png' %}" alt="{{ room.title }}">
+                <div class="card-content">
+                    <h3 class="card-title">{{ room.title }}</h3>
+                    <a href="?room={{ room.id }}" class="btn">Выбрать</a>
+                </div>
             </div>
             {% endfor %}
         </div>
@@ -23,9 +27,13 @@
     {# Step 1: Date Selection #}
     {% if step == 1 %}
         <h2>Шаг 2: Выберите дату для зала "{{ room.title }}"</h2>
-        <p>Используйте календарь для выбора даты.</p>
-        <input type="date" id="booking_date" min="{{ today|date:'Y-m-d' }}" max="{{ max_date|date:'Y-m-d' }}">
-        <button class="btn" onclick="selectDate()">Выбрать</button>
+        <div style="text-align: center; margin: 20px 0;">
+            <input type="date" id="booking_date" min="{{ today|date:'Y-m-d' }}" max="{{ max_date|date:'Y-m-d' }}" class="date-input">
+            <button class="btn" onclick="selectDate()">Выбрать</button>
+        </div>
+        <style>
+            .date-input { padding: 10px; font-size: 16px; background-color: #333; border: 1px solid #555; color: #f0f0f0; border-radius: 4px; }
+        </style>
         <script>
             function selectDate() {
                 const date = document.getElementById('booking_date').value;
@@ -39,35 +47,33 @@
     {# Step 2: Time Selection #}
     {% if step == 2 %}
         <h2>Шаг 3: Выберите время для {{ booking_date|date:"d.m.Y" }}</h2>
-        <form id="time-form">
-            <div class="hours">
-                {% for hour, price in available_hours.items %}
-                <div class="hour" data-hour="{{ hour }}" data-price="{{ price }}">
-                    <strong>{{ hour }}</strong><br>
-                    <span>{{ price }} руб.</span>
-                </div>
-                {% empty %}
-                <p>На выбранную дату свободных интервалов нет.</p>
-                {% endfor %}
+        <div id="time-grid" class="card-grid">
+            {% for hour, price in available_hours.items %}
+            <div class="hour-card" data-hour="{{ hour }}">
+                <strong>{{ hour }}</strong><br>
+                <span>{{ price }} руб.</span>
             </div>
-            <br>
+            {% empty %}
+            <p style="grid-column: 1 / -1; text-align: center;">На выбранную дату свободных интервалов нет.</p>
+            {% endfor %}
+        </div>
+        <div style="text-align: center; margin-top: 30px;">
             <button type="button" class="btn" onclick="submitTimes()">Продолжить</button>
-        </form>
+        </div>
         <style>
-            .hours { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
-            .hour { border: 1px solid #333; padding: 10px; text-align: center; cursor: pointer; border-radius: 4px; }
-            .hour:hover { background-color: #333; }
-            .hour.selected { background-color: #03dac6; color: #121212; }
+            .hour-card { padding: 20px; text-align: center; cursor: pointer; border-radius: 4px; background-color: #252525; border: 1px solid #333; transition: background-color 0.2s; }
+            .hour-card:hover { background-color: #444; }
+            .hour-card.selected { background-color: #03dac6; color: #121212; }
         </style>
         <script>
-            document.querySelectorAll('.hour').forEach(el => {
+            document.querySelectorAll('.hour-card').forEach(el => {
                 el.addEventListener('click', () => {
                     el.classList.toggle('selected');
                 });
             });
 
             function submitTimes() {
-                const selected = document.querySelectorAll('.hour.selected');
+                const selected = document.querySelectorAll('.hour-card.selected');
                 if (selected.length > 0) {
                     const times = Array.from(selected).map(el => el.dataset.hour).join(',');
                     window.location.href = `?room={{ room.id }}&date={{ booking_date|date:"Y-m-d" }}&time=${times}`;
@@ -81,32 +87,36 @@
     {# Step 3: Contact Form #}
     {% if step == 3 %}
         <h2>Шаг 4: Контактные данные и подтверждение</h2>
-        <h3>Вы выбрали:</h3>
-        <p><strong>Зал:</strong> {{ room.title }}</p>
-        <p><strong>Дата:</strong> {{ booking_date|date:"d.m.Y" }}</p>
-        <p><strong>Время:</strong></p>
-        <ul>
-            {% for slot, price in selected_slots.items %}
-            <li>{{ slot }} ({{ price }} руб.)</li>
-            {% endfor %}
-        </ul>
-        <p><strong>Итого:</strong> {{ total_price }} руб.</p>
+        <div class="summary">
+            <h3>Вы выбрали:</h3>
+            <p><strong>Зал:</strong> {{ room.title }}</p>
+            <p><strong>Дата:</strong> {{ booking_date|date:"d.m.Y" }}</p>
+            <p><strong>Время:</strong></p>
+            <ul>
+                {% for slot, price in selected_slots.items %}
+                <li>{{ slot }} ({{ price }} руб.)</li>
+                {% endfor %}
+            </ul>
+            <p><strong>Итого:</strong> {{ total_price }} руб.</p>
+        </div>
 
-        <form method="post">
+        <form method="post" class="booking-form">
             {% csrf_token %}
             {{ form.as_p }}
             <button type="submit" class="btn">Забронировать</button>
         </form>
         <style>
-            form p { margin-bottom: 15px; }
-            form label { display: block; margin-bottom: 5px; }
-            form input, form textarea {
+            .summary { background-color: #252525; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
+            .booking-form p { margin-bottom: 15px; }
+            .booking-form label { display: block; margin-bottom: 5px; color: #aaa; }
+            .booking-form input, .booking-form textarea {
                 width: 100%;
-                padding: 10px;
+                padding: 12px;
                 background-color: #333;
                 border: 1px solid #555;
-                color: #e0e0e0;
+                color: #f0f0f0;
                 border-radius: 4px;
+                box-sizing: border-box;
             }
         </style>
     {% endif %}

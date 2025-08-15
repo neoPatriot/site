@@ -184,9 +184,12 @@ def booking_success_view(request):
     return render(request, 'booking/booking_success.html', context)
 
 def home_view(request):
+    # I need to add image to room model to make this dynamic
+    rooms = Room.objects.all()
     context = {
         'site_title': "«Продюсерский центр Big \"Z\"»",
         'page_title': "Главная",
+        'rooms': rooms,
     }
     return render(request, 'booking/home.html', context)
 
