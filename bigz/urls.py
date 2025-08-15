@@ -18,10 +18,32 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from booking import views as booking_views
+from rest_framework import permissions
+from drf_yasg.views import get_schema_view
+from drf_yasg import openapi
+
+schema_view = get_schema_view(
+   openapi.Info(
+      title="BigZ Booking API",
+      default_version='v1',
+      description="API для системы бронирования BigZ",
+      contact=openapi.Contact(email="contact@example.com"),
+      license=openapi.License(name="BSD License"),
+   ),
+   public=True,
+   permission_classes=(permissions.AllowAny,),
+)
 
 urlpatterns = [
     path("", booking_views.home_view, name="home"),
     path("about/", booking_views.about_view, name="about"),
     path("admin/", admin.site.urls),
     path("book/", include("booking.urls", namespace="booking")),
+
+    # API URLs
+    path("api/v1/", include("booking.api_urls", namespace="booking_api")),
+
+    # API Documentation URLs
+    path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    path('redoc/', schema_view.with_ui('redoc', cache_timeout=0), name='schema-redoc'),
 ]

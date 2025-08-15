@@ -37,7 +37,14 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
+    # My apps
     "booking.apps.BookingConfig",
+
+    # 3rd party apps
+    "rest_framework",
+    "drf_yasg",
+    "django_filters",
 ]
 
 MIDDLEWARE = [
@@ -124,7 +131,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Telegram Bot Settings
 # WARNING: Do not use these dummy credentials in production.
-TELEGRAM_BOT_TOKEN = "6858938442:AAEjaDjtUBVgiUr7M2ylEsHH4a3nXhaKLGo"
+TELEGRAM_BOT_TOKEN = "7973585745:AAFz97T9MoptzcuatQKy3pd1zbd9J-o9f5E"
 TELEGRAM_CHAT_IDS = [
     '810564487', # Alex
     '1098521522', # Spartak

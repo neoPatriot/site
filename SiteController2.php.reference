@@ -49,7 +49,7 @@ class SiteController2 extends Controller
     //Функция отправки сообщения при отмене
     function botsendcancel ($m) {
 
-    define('BOT_TOKEN', '');
+    define('BOT_TOKEN', '6858938442:AAEjaDjtUBVgiUr7M2ylEsHH4a3nXhaKLGo');
     define('API_URL', 'https://api.telegram.org/bot'.BOT_TOKEN.'/');
 
             // Получатели сообщений от бота

@@ -1,0 +1,12 @@
+asgiref==3.9.1
+certifi==2025.8.3
+charset-normalizer==3.4.3
+Django==5.2.5
+greenlet==3.2.3
+idna==3.10
+playwright==1.54.0
+pyee==13.0.0
+requests==2.32.4
+sqlparse==0.5.3
+typing_extensions==4.14.1
+urllib3==2.5.0
