@@ -1,0 +1,113 @@
+{% extends 'booking/base.html' %}
+
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block content %}
+    <h1>{{ page_title }}</h1>
+
+    <hr>
+
+    {# Step 0: Room Selection #}
+    {% if step == 0 %}
+        <h2>Шаг 1: Выберите зал</h2>
+        <div class="rooms">
+            {% for room in rooms %}
+            <div class="room">
+                <h3><a href="?room={{ room.id }}">{{ room.title }}</a></h3>
+                <p>{{ room.description|truncatewords:20 }}</p>
+            </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    {# Step 1: Date Selection #}
+    {% if step == 1 %}
+        <h2>Шаг 2: Выберите дату для зала "{{ room.title }}"</h2>
+        <p>Используйте календарь для выбора даты.</p>
+        <input type="date" id="booking_date" min="{{ today|date:'Y-m-d' }}" max="{{ max_date|date:'Y-m-d' }}">
+        <button class="btn" onclick="selectDate()">Выбрать</button>
+        <script>
+            function selectDate() {
+                const date = document.getElementById('booking_date').value;
+                if (date) {
+                    window.location.href = `?room={{ room.id }}&date=${date}`;
+                }
+            }
+        </script>
+    {% endif %}
+
+    {# Step 2: Time Selection #}
+    {% if step == 2 %}
+        <h2>Шаг 3: Выберите время для {{ booking_date|date:"d.m.Y" }}</h2>
+        <form id="time-form">
+            <div class="hours">
+                {% for hour, price in available_hours.items %}
+                <div class="hour" data-hour="{{ hour }}" data-price="{{ price }}">
+                    <strong>{{ hour }}</strong><br>
+                    <span>{{ price }} руб.</span>
+                </div>
+                {% empty %}
+                <p>На выбранную дату свободных интервалов нет.</p>
+                {% endfor %}
+            </div>
+            <br>
+            <button type="button" class="btn" onclick="submitTimes()">Продолжить</button>
+        </form>
+        <style>
+            .hours { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+            .hour { border: 1px solid #333; padding: 10px; text-align: center; cursor: pointer; border-radius: 4px; }
+            .hour:hover { background-color: #333; }
+            .hour.selected { background-color: #03dac6; color: #121212; }
+        </style>
+        <script>
+            document.querySelectorAll('.hour').forEach(el => {
+                el.addEventListener('click', () => {
+                    el.classList.toggle('selected');
+                });
+            });
+
+            function submitTimes() {
+                const selected = document.querySelectorAll('.hour.selected');
+                if (selected.length > 0) {
+                    const times = Array.from(selected).map(el => el.dataset.hour).join(',');
+                    window.location.href = `?room={{ room.id }}&date={{ booking_date|date:"Y-m-d" }}&time=${times}`;
+                } else {
+                    alert('Пожалуйста, выберите хотя бы один интервал.');
+                }
+            }
+        </script>
+    {% endif %}
+
+    {# Step 3: Contact Form #}
+    {% if step == 3 %}
+        <h2>Шаг 4: Контактные данные и подтверждение</h2>
+        <h3>Вы выбрали:</h3>
+        <p><strong>Зал:</strong> {{ room.title }}</p>
+        <p><strong>Дата:</strong> {{ booking_date|date:"d.m.Y" }}</p>
+        <p><strong>Время:</strong></p>
+        <ul>
+            {% for slot, price in selected_slots.items %}
+            <li>{{ slot }} ({{ price }} руб.)</li>
+            {% endfor %}
+        </ul>
+        <p><strong>Итого:</strong> {{ total_price }} руб.</p>
+
+        <form method="post">
+            {% csrf_token %}
+            {{ form.as_p }}
+            <button type="submit" class="btn">Забронировать</button>
+        </form>
+        <style>
+            form p { margin-bottom: 15px; }
+            form label { display: block; margin-bottom: 5px; }
+            form input, form textarea {
+                width: 100%;
+                padding: 10px;
+                background-color: #333;
+                border: 1px solid #555;
+                color: #e0e0e0;
+                border-radius: 4px;
+            }
+        </style>
+    {% endif %}
+{% endblock %}
