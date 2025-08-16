@@ -17,7 +17,7 @@ class RoomSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Room
-        fields = ['id', 'title', 'description', 'organization_name', 'schedule']
+        fields = ['id', 'title', 'description', 'image', 'organization_name', 'schedule']
 
 
 class BookingCreateSerializer(serializers.Serializer):

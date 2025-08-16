@@ -20,10 +20,15 @@ class RoomScheduleInline(admin.StackedInline):
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ('title', 'organization', 'created_at')
+    list_display = ('title', 'organization', 'image', 'created_at')
     list_filter = ('organization',)
     search_fields = ('title',)
     inlines = (RoomScheduleInline,)
+    fieldsets = (
+        (None, {
+            'fields': ('organization', 'title', 'description', 'image')
+        }),
+    )
 
 
 class BookedTimeSlotInline(admin.TabularInline):

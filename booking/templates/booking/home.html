@@ -4,57 +4,18 @@
 {% block content %}
 <h2>Наши услуги</h2>
 <div class="card-grid">
-
-    {# This part will be populated dynamically from the database later #}
-    {# For now, using placeholders to build the design #}
-
+    {% for room in rooms %}
     <div class="card">
-        <img src="{% static 'images/z-6-sq.png' %}" alt="Концертная площадка">
+        {% if room.image %}
+            <img src="{{ room.image.url }}" alt="{{ room.title }}">
+        {% else %}
+            <img src="{% static 'images/z-6-sq.png' %}" alt="Placeholder image">
+        {% endif %}
         <div class="card-content">
-            <h3 class="card-title">Концертная площадка "Чертог"</h3>
-            <a href="#" class="btn">Забронировать</a>
+            <h3 class="card-title">{{ room.title }}</h3>
+            <a href="{% url 'booking:booking_view' %}?room={{ room.id }}" class="btn">Забронировать</a>
         </div>
     </div>
-
-    <div class="card">
-        <img src="{% static 'images/z-studio-3-3.jpg' %}" alt="Студия звукозаписи">
-        <div class="card-content">
-            <h3 class="card-title">Студия звукозаписи "Z-Studio"</h3>
-            <a href="#" class="btn">Забронировать</a>
-        </div>
-    </div>
-
-    <div class="card">
-        <img src="{% static 'images/3-2-2.jpg' %}" alt="Кузня">
-        <div class="card-content">
-            <h3 class="card-title">Зал "Кузня" (Барабаны)</h3>
-            <a href="#" class="btn">Забронировать</a>
-        </div>
-    </div>
-
-    <div class="card">
-        <img src="{% static 'images/4-2-4.jpg' %}" alt="Певческая">
-        <div class="card-content">
-            <h3 class="card-title">Зал "Певческая" (Вокал)</h3>
-            <a href="#" class="btn">Забронировать</a>
-        </div>
-    </div>
-
-    <div class="card">
-        <img src="{% static 'images/5-2-2.jpg' %}" alt="Гитарные покои">
-        <div class="card-content">
-            <h3 class="card-title">Зал "Гитарные покои"</h3>
-            <a href="#" class="btn">Забронировать</a>
-        </div>
-    </div>
-
-    <div class="card">
-        <img src="{% static 'images/z-4-sq.jpg' %}" alt="Фотостудия">
-        <div class="card-content">
-            <h3 class="card-title">Фотостудия "Фото Z"</h3>
-            <a href="#" class="btn">Забронировать</a>
-        </div>
-    </div>
-
+    {% endfor %}
 </div>
 {% endblock %}
