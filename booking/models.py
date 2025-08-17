@@ -20,6 +20,7 @@ class Room(models.Model):
     organization = models.ForeignKey(Organization, on_delete=models.CASCADE, related_name='rooms', verbose_name="Организация")
     title = models.CharField(max_length=255, verbose_name="Название зала")
     description = models.TextField(blank=True, verbose_name="Описание")
+    image = models.ImageField(upload_to='room_images/', blank=True, null=True, verbose_name="Изображение")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

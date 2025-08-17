@@ -13,8 +13,11 @@
         <div class="card-grid">
             {% for room in rooms %}
             <div class="card">
-                {# Here we would ideally use a room-specific image #}
-                <img src="{% static 'images/z-6-sq.png' %}" alt="{{ room.title }}">
+                {% if room.image %}
+                    <img src="{{ room.image.url }}" alt="{{ room.title }}">
+                {% else %}
+                    <img src="{% static 'images/z-6-sq.png' %}" alt="Placeholder image">
+                {% endif %}
                 <div class="card-content">
                     <h3 class="card-title">{{ room.title }}</h3>
                     <a href="?room={{ room.id }}" class="btn">Выбрать</a>
