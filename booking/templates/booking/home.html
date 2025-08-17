@@ -2,20 +2,69 @@
 {% load static %}
 
 {% block content %}
-<h2>Наши услуги</h2>
-<div class="card-grid">
-    {% for room in rooms %}
-    <div class="card">
-        {% if room.image %}
-            <img src="{{ room.image.url }}" alt="{{ room.title }}">
-        {% else %}
-            <img src="{% static 'images/z-6-sq.png' %}" alt="Placeholder image">
-        {% endif %}
-        <div class="card-content">
-            <h3 class="card-title">{{ room.title }}</h3>
-            <a href="{% url 'booking:booking_view' %}?room={{ room.id }}" class="btn">Забронировать</a>
-        </div>
+<style>
+    .hero-section {
+        text-align: center;
+        padding: 60px 0;
+    }
+    .hero-logo {
+        font-size: 4rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        letter-spacing: 10px;
+        margin-bottom: 40px;
+        /* Basic representation of the metallic logo */
+        color: #ccc;
+        text-shadow: 2px 2px 4px #000;
+    }
+    .services-grid {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 40px;
+        text-align: left;
+    }
+    .services-grid ul {
+        list-style-type: none;
+        padding-left: 0;
+    }
+    .services-grid li {
+        margin-bottom: 10px;
+        padding-left: 20px;
+        position: relative;
+    }
+    .services-grid li::before {
+        content: '➢'; /* Arrow-like symbol */
+        position: absolute;
+        left: 0;
+        color: #03dac6;
+    }
+</style>
+
+<div class="hero-section">
+    <div class="hero-logo">Big Z</div>
+</div>
+
+<div class="services-grid">
+    <div class="column">
+        <ul>
+            <li>Студия звукозаписи</li>
+            <li>Концертная площадка</li>
+            <li>4 репетиционных зала</li>
+        </ul>
     </div>
-    {% endfor %}
+    <div class="column">
+        <ul>
+            <li>Прокат звукового и светового оборудования</li>
+            <li>Организация и проведение мероприятий любого формата под ключ</li>
+            <li>Первая РОК-школа Карелии "Z-school"</li>
+        </ul>
+    </div>
+    <div class="column">
+        <ul>
+            <li>Фотостудия</li>
+            <li>Арт-пространство</li>
+            <li>Работа с артистами</li>
+        </ul>
+    </div>
 </div>
 {% endblock %}
