@@ -4,6 +4,9 @@ from django.contrib.auth.models import User
 class Organization(models.Model):
     """Организация, которой принадлежат залы."""
     name = models.CharField(max_length=255, verbose_name="Название организации")
+    description = models.TextField(blank=True, verbose_name="Описание")
+    phone = models.CharField(max_length=30, blank=True, verbose_name="Телефон")
+    email = models.EmailField(blank=True, verbose_name="Email")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

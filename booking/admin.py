@@ -3,7 +3,13 @@ from .models import Organization, Room, RoomSchedule, Booking, BookedTimeSlot
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'created_at')
+    list_display = ('name', 'phone', 'email', 'created_at')
+    search_fields = ('name', 'email')
+    fieldsets = (
+        (None, {
+            'fields': ('name', 'description', 'phone', 'email')
+        }),
+    )
 
 class RoomScheduleInline(admin.StackedInline):
     model = RoomSchedule

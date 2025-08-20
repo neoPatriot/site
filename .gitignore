@@ -1,0 +1,10 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.pyc
+
+# DB files
+db.sqlite3
+*.sqlite3
+
+# Log files
+*.log
