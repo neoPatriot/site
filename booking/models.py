@@ -35,20 +35,31 @@ class Room(models.Model):
         verbose_name_plural = "Залы"
 
 
-class RoomSchedule(models.Model):
-    """Расписание и цены для конкретного зала."""
-    room = models.OneToOneField(Room, on_delete=models.CASCADE, related_name='schedule', verbose_name="Зал")
-    # JSON-поле для хранения цен. Пример: {"1-09:00-10:00": 500, "1-10:00-11:00": 600, ...}
-    # Где 1 - день недели (ПН), "09:00-10:00" - интервал, 500 - цена.
-    schedule = models.JSONField(default=dict, verbose_name="Расписание (JSON)")
-    updated_at = models.DateTimeField(auto_now=True)
+class ScheduleRule(models.Model):
+    """Правило для генерации слотов в расписании зала."""
+    DAY_CHOICES = [
+        (1, "Понедельник"),
+        (2, "Вторник"),
+        (3, "Среда"),
+        (4, "Четверг"),
+        (5, "Пятница"),
+        (6, "Суббота"),
+        (7, "Воскресенье"),
+    ]
+
+    room = models.ForeignKey(Room, on_delete=models.CASCADE, related_name='schedule_rules', verbose_name="Зал")
+    day_of_week = models.IntegerField(choices=DAY_CHOICES, verbose_name="День недели")
+    start_time = models.TimeField(verbose_name="Время начала")
+    end_time = models.TimeField(verbose_name="Время окончания")
+    price = models.DecimalField(max_digits=10, decimal_places=2, verbose_name="Цена за час")
 
     def __str__(self):
-        return f"Расписание для {self.room.title}"
+        return f"Правило для {self.room.title}: {self.get_day_of_week_display()} {self.start_time}-{self.end_time}"
 
     class Meta:
-        verbose_name = "Расписание зала"
-        verbose_name_plural = "Расписания залов"
+        verbose_name = "Правило расписания"
+        verbose_name_plural = "Правила расписания"
+        ordering = ['day_of_week', 'start_time']
 
 
 class Booking(models.Model):

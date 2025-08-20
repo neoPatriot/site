@@ -1,23 +1,27 @@
 from rest_framework import serializers
-from .models import Room, RoomSchedule, Booking, BookedTimeSlot
+from .models import Room, ScheduleRule, Booking, BookedTimeSlot
 from django.db import transaction
 import datetime
 
-class RoomScheduleSerializer(serializers.ModelSerializer):
+class ScheduleRuleSerializer(serializers.ModelSerializer):
+    """
+    Serializer for individual schedule rules.
+    """
     class Meta:
-        model = RoomSchedule
-        fields = ['schedule']
+        model = ScheduleRule
+        fields = ['day_of_week', 'start_time', 'end_time', 'price']
+
 
 class RoomSerializer(serializers.ModelSerializer):
     """
     Serializer for reading room information.
     """
-    schedule = RoomScheduleSerializer(read_only=True)
     organization_name = serializers.CharField(source='organization.name', read_only=True)
+    schedule_rules = ScheduleRuleSerializer(many=True, read_only=True)
 
     class Meta:
         model = Room
-        fields = ['id', 'title', 'description', 'image', 'organization_name', 'schedule']
+        fields = ['id', 'title', 'description', 'image', 'organization_name', 'schedule_rules']
 
 
 class BookingCreateSerializer(serializers.Serializer):
@@ -53,19 +57,25 @@ class BookingCreateSerializer(serializers.Serializer):
         booking_date = data['booking_date']
         time_slots = data['time_slots']
 
-        # Check for schedule availability and price
-        try:
-            schedule = room.schedule.schedule
-        except Room.schedule.RelatedObjectDoesNotExist:
-            raise serializers.ValidationError(f"Для зала '{room.title}' не настроено расписание.")
-
-        day_of_week = booking_date.isoweekday()
+        # Check that the requested time slots are valid according to the room's schedule
+        rules = ScheduleRule.objects.filter(room=room, day_of_week=booking_date.isoweekday())
         for slot in time_slots:
-            schedule_key = f"{day_of_week}-{slot}"
-            if schedule.get(schedule_key) is None or float(schedule.get(schedule_key, 0)) <= 0:
-                raise serializers.ValidationError(f"Слот {slot} недоступен для бронирования в этот день.")
+            is_valid_slot = False
+            try:
+                start_hour = int(slot.split(':')[0])
+                slot_time = datetime.time(start_hour)
+                for rule in rules:
+                    if rule.start_time <= slot_time < rule.end_time:
+                        is_valid_slot = True
+                        break
+            except (ValueError, IndexError):
+                # This will be caught by is_valid_slot being False
+                pass
 
-        # Check for existing bookings
+            if not is_valid_slot:
+                raise serializers.ValidationError(f"Слот {slot} недоступен для бронирования по текущему расписанию.")
+
+        # Check for existing bookings for the same slots
         already_booked = BookedTimeSlot.objects.filter(
             booking__room=room,
             booking_date=booking_date,
@@ -85,8 +95,8 @@ class BookingCreateSerializer(serializers.Serializer):
         room = validated_data['room']
         booking_date = validated_data['booking_date']
         time_slots = validated_data['time_slots']
-        schedule = room.schedule.schedule
         day_of_week = booking_date.isoweekday()
+        rules = ScheduleRule.objects.filter(room=room, day_of_week=day_of_week)
 
         try:
             with transaction.atomic():
@@ -98,14 +108,18 @@ class BookingCreateSerializer(serializers.Serializer):
                 )
 
                 slots_to_create = []
-                total_price = 0
-                booking_summary = {}
-
                 for slot in time_slots:
-                    schedule_key = f"{day_of_week}-{slot}"
-                    price = float(schedule.get(schedule_key, 0))
-                    total_price += price
-                    booking_summary[slot] = price
+                    price = 0  # Default price
+                    try:
+                        start_hour = int(slot.split(':')[0])
+                        slot_time = datetime.time(start_hour)
+                        for rule in rules:
+                            if rule.start_time <= slot_time < rule.end_time:
+                                price = rule.price
+                                break
+                    except (ValueError, IndexError):
+                        pass
+
                     slots_to_create.append(
                         BookedTimeSlot(
                             booking=booking,
@@ -117,9 +131,8 @@ class BookingCreateSerializer(serializers.Serializer):
                     )
                 BookedTimeSlot.objects.bulk_create(slots_to_create)
 
-                # Note: Sending Telegram message should ideally be here or in a signal
-                # For simplicity, we can call it from the view after serializer.save()
-
+                # The view will be responsible for calculating the total price
+                # for the notification message based on the created slots.
                 return booking
         except Exception as e:
             raise serializers.ValidationError(f"Не удалось создать бронирование: {e}")

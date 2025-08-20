@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.urls import reverse
 from django.db import transaction
-from .models import Room, Booking, BookedTimeSlot, RoomSchedule
+from .models import Room, Booking, BookedTimeSlot, ScheduleRule
 from .forms import BookingForm
 from .telegram_sender import send_telegram_message
 import datetime
@@ -43,38 +43,37 @@ def booking_view(request):
         step = 2
         booking_date = datetime.datetime.strptime(booking_date_str, '%Y-%m-%d').date()
 
-        # Get schedule for the room
-        try:
-            schedule = room.schedule.schedule
-        except Room.schedule.RelatedObjectDoesNotExist:
-            # Handle case where room has no schedule
-            schedule = {}
+        # Get schedule rules for the given day of the week
+        day_of_week = booking_date.isoweekday()
+        rules = ScheduleRule.objects.filter(room=room, day_of_week=day_of_week)
 
-        # Get booked slots for the date
+        # Get already booked slots for the date
         booked_slots = BookedTimeSlot.objects.filter(
             booking__room=room,
             booking_date=booking_date,
             is_active=True
         ).values_list('time_slot', flat=True)
 
-        # Determine available slots
-        day_of_week = booking_date.isoweekday() # Monday is 1 and Sunday is 7
+        # Determine available hourly slots based on rules
         available_hours = {}
-
-        # Assuming schedule keys are like "1-09:00-10:00"
         for i in range(24):
-            time_key = f"{i:02d}:00-{(i+1):02d}:00"
-            if time_key == "23:00-24:00": time_key = "23:00-00:00"
+            current_time = datetime.time(i)
+            # The time_key is a string like "09:00-10:00"
+            time_key = f"{i:02d}:00-{(i + 1):02d}:00"
 
-            schedule_key = f"{day_of_week}-{time_key}"
-
-            # Check if today and time has passed
-            if booking_date == datetime.date.today() and i < datetime.datetime.now().hour:
+            # Check if today and the hour has passed
+            if booking_date == datetime.date.today() and current_time < datetime.datetime.now().time():
                 continue
 
-            price = schedule.get(schedule_key)
-            if price and float(price) > 0 and time_key not in booked_slots:
-                available_hours[time_key] = price
+            # Check if the slot is already booked
+            if time_key in booked_slots:
+                continue
+
+            # Find a rule that applies to this hour and get its price
+            for rule in rules:
+                if rule.start_time <= current_time < rule.end_time:
+                    available_hours[time_key] = rule.price
+                    break  # First matching rule wins
 
         context.update({
             'step': step,
@@ -90,20 +89,30 @@ def booking_view(request):
         booking_date = datetime.datetime.strptime(booking_date_str, '%Y-%m-%d').date()
         selected_slots = time_slots_str.split(',')
 
-        try:
-            schedule = room.schedule.schedule
-        except Room.schedule.RelatedObjectDoesNotExist:
-            schedule = {}
-
-        # Calculate total price and prepare summary
-        total_price = 0
+        # Calculate total price and prepare summary based on selected slots
         booking_summary = {}
+        total_price = 0
         day_of_week = booking_date.isoweekday()
+        rules = ScheduleRule.objects.filter(room=room, day_of_week=day_of_week)
+
         for slot in selected_slots:
-            schedule_key = f"{day_of_week}-{slot}"
-            price = schedule.get(schedule_key, 0)
+            price = 0  # Default price if no rule is found
+            try:
+                # The slot is a string like "10:00-11:00". We need the start time.
+                start_hour = int(slot.split(':')[0])
+                slot_time = datetime.time(start_hour)
+
+                # Find the price for this specific slot from the rules
+                for rule in rules:
+                    if rule.start_time <= slot_time < rule.end_time:
+                        price = rule.price
+                        break
+            except (ValueError, IndexError):
+                # Ignore malformed slots, though this shouldn't happen with our frontend
+                pass
+
             booking_summary[slot] = price
-            total_price += float(price)
+            total_price += price
 
         if request.method == 'POST':
             form = BookingForm(request.POST)

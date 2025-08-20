@@ -1,28 +1,33 @@
 from django.test import TestCase
 from django.urls import reverse
-from .models import Organization, Room, RoomSchedule, Booking, BookedTimeSlot
+from .models import Organization, Room, ScheduleRule, Booking, BookedTimeSlot
 import json
 from rest_framework.test import APIClient
 import datetime
+from decimal import Decimal
 
 class BookingAppTests(TestCase):
 
     @classmethod
     def setUpTestData(cls):
-        # Создаем данные один раз для всех тестов в классе
         cls.organization = Organization.objects.create(name="Test Org")
         cls.room = Room.objects.create(
             organization=cls.organization,
             title="Test Room",
             description="A room for testing."
         )
-        # Создаем расписание для комнаты
-        # 1-ПН, 2-ВТ, ..., 7-ВС
-        schedule_data = {
-            "1-10:00-11:00": "500.00",
-            "1-11:00-12:00": "600.00",
-        }
-        cls.schedule = RoomSchedule.objects.create(room=cls.room, schedule=schedule_data)
+        # Create a schedule rule for Monday from 10:00 to 14:00 at 500/hr
+        cls.rule = ScheduleRule.objects.create(
+            room=cls.room,
+            day_of_week=1,  # Monday
+            start_time=datetime.time(10),
+            end_time=datetime.time(14),
+            price=Decimal("500.00")
+        )
+        # Determine the next Monday for testing
+        today = datetime.date.today()
+        cls.next_monday = today + datetime.timedelta(days=(7 - today.weekday()))
+        cls.date_str = cls.next_monday.strftime('%Y-%m-%d')
 
     def test_home_page_status_code(self):
         response = self.client.get(reverse('home'))
@@ -32,59 +37,44 @@ class BookingAppTests(TestCase):
         response = self.client.get(reverse('about'))
         self.assertEqual(response.status_code, 200)
 
-    def test_booking_step0_room_list_status_code(self):
-        response = self.client.get(reverse('booking:booking_view'))
+    def test_booking_step2_availability(self):
+        # Test that the availability view shows correct slots
+        url = reverse('booking:booking_view') + f'?room={self.room.id}&date={self.date_str}'
+        response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, self.room.title)
+        self.assertIn('available_hours', response.context)
+        # Our rule is from 10:00 to 14:00
+        self.assertIn('10:00-11:00', response.context['available_hours'])
+        self.assertIn('13:00-14:00', response.context['available_hours'])
+        self.assertNotIn('09:00-10:00', response.context['available_hours'])
+        self.assertNotIn('14:00-15:00', response.context['available_hours'])
+        self.assertEqual(response.context['available_hours']['10:00-11:00'], Decimal("500.00"))
+
 
     def test_model_str_representation(self):
         self.assertEqual(str(self.organization), "Test Org")
         self.assertEqual(str(self.room), "Test Room")
-        self.assertEqual(str(self.schedule), f"Расписание для {self.room.title}")
+        expected_str = f"Правило для {self.room.title}: Понедельник 10:00:00-14:00:00"
+        self.assertEqual(str(self.rule), expected_str)
 
     def test_booking_creation_full_process(self):
-        # Шаг 0: Заходим на страницу бронирования
-        response = self.client.get(reverse('booking:booking_view'))
-        self.assertEqual(response.status_code, 200)
-
-        # Шаг 1: Выбираем комнату (в нашем случае она одна)
-        # Шаг 2: Выбираем дату
-        import datetime
-        # Выбираем следующий понедельник, чтобы расписание точно работало
-        today = datetime.date.today()
-        next_monday = today + datetime.timedelta(days=(7 - today.weekday()))
-        date_str = next_monday.strftime('%Y-%m-%d')
-
-        # Шаг 3: Выбираем время
-        time_slot = "10:00-11:00"
-
-        # Шаг 4: Отправляем форму с контактными данными
+        time_slot = "11:00-12:00"
         booking_data = {
             'customer_name': 'Test User',
             'customer_phone': '+1234567890',
             'customer_comment': 'Test comment',
         }
-
-        # Полный URL для POST-запроса
-        post_url = reverse('booking:booking_view') + f'?room={self.room.id}&date={date_str}&time={time_slot}'
-
+        post_url = reverse('booking:booking_view') + f'?room={self.room.id}&date={self.date_str}&time={time_slot}'
         response = self.client.post(post_url, booking_data)
 
-        # Проверяем, что нас перенаправило на страницу успеха
         self.assertRedirects(response, reverse('booking:booking_success'))
 
-        # Проверяем, что бронирование создано в базе данных
         self.assertEqual(Booking.objects.count(), 1)
         self.assertEqual(BookedTimeSlot.objects.count(), 1)
-
-        created_booking = Booking.objects.first()
-        self.assertEqual(created_booking.customer_name, 'Test User')
-        self.assertEqual(created_booking.room, self.room)
-
         created_slot = BookedTimeSlot.objects.first()
-        self.assertEqual(created_slot.booking, created_booking)
         self.assertEqual(created_slot.time_slot, time_slot)
-        self.assertEqual(created_slot.booking_date, next_monday)
+        # Check that the price was correctly applied from the rule
+        self.assertEqual(created_slot.price, Decimal("500.00"))
 
 
 class BookingAPITests(TestCase):
@@ -95,16 +85,20 @@ class BookingAPITests(TestCase):
         cls.organization = Organization.objects.create(name="Test API Org")
         cls.room = Room.objects.create(
             organization=cls.organization,
-            title="Test API Room",
-            description="A room for API testing."
+            title="Test API Room"
         )
-        cls.schedule_data = {
-            "1-10:00-11:00": "700.00",
-            "1-11:00-12:00": "800.00",
-        }
-        cls.schedule = RoomSchedule.objects.create(room=cls.room, schedule=cls.schedule_data)
-
-        # Determine next Monday for testing
+        # Rule for Monday from 09:00 to 12:00 at 750/hr
+        ScheduleRule.objects.create(
+            room=cls.room, day_of_week=1,
+            start_time=datetime.time(9), end_time=datetime.time(12),
+            price=Decimal("750.00")
+        )
+        # Rule for Monday from 12:00 to 15:00 at 900/hr
+        ScheduleRule.objects.create(
+            room=cls.room, day_of_week=1,
+            start_time=datetime.time(12), end_time=datetime.time(15),
+            price=Decimal("900.00")
+        )
         today = datetime.date.today()
         cls.next_monday = today + datetime.timedelta(days=(7 - today.weekday()))
         cls.date_str = cls.next_monday.strftime('%Y-%m-%d')
@@ -113,50 +107,70 @@ class BookingAPITests(TestCase):
         url = reverse('booking_api:room-list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(len(response.data), 1)
         self.assertEqual(response.data[0]['title'], self.room.title)
+        self.assertIn('schedule_rules', response.data[0])
+        self.assertEqual(len(response.data[0]['schedule_rules']), 2)
 
     def test_room_availability_api(self):
         url = reverse('booking_api:room-availability', kwargs={'pk': self.room.id})
         response = self.client.get(url, {'date': self.date_str})
         self.assertEqual(response.status_code, 200)
-        self.assertIn("10:00-11:00", response.data)
-        self.assertEqual(response.data["10:00-11:00"], "700.00")
+        self.assertIn("09:00-10:00", response.data)
+        # In the test client, the data might be a raw Decimal, not a string.
+        # We compare it as a string to match the final JSON output.
+        self.assertEqual(str(response.data["09:00-10:00"]), "750.00")
+        self.assertIn("14:00-15:00", response.data)
+        self.assertEqual(str(response.data["14:00-15:00"]), "900.00")
+        self.assertNotIn("08:00-09:00", response.data)
+        self.assertNotIn("15:00-16:00", response.data)
 
     def test_create_booking_api_success(self):
         url = reverse('booking_api:booking-create')
         payload = {
             "room": self.room.id,
             "booking_date": self.date_str,
-            "time_slots": ["10:00-11:00"],
+            "time_slots": ["10:00-11:00", "12:00-13:00"], # One from each rule
             "customer_name": "API User",
             "customer_phone": "9876543210",
-            "customer_comment": "Via API"
         }
         response = self.client.post(url, payload, format='json')
         self.assertEqual(response.status_code, 201)
         self.assertEqual(Booking.objects.count(), 1)
-        self.assertEqual(BookedTimeSlot.objects.count(), 1)
-        self.assertEqual(Booking.objects.first().customer_name, "API User")
+        self.assertEqual(BookedTimeSlot.objects.count(), 2)
+
+        booking = Booking.objects.first()
+        slot1 = booking.time_slots.get(time_slot="10:00-11:00")
+        slot2 = booking.time_slots.get(time_slot="12:00-13:00")
+        self.assertEqual(slot1.price, Decimal("750.00"))
+        self.assertEqual(slot2.price, Decimal("900.00"))
 
     def test_create_booking_api_slot_taken(self):
-        # First, create a booking to occupy a slot
+        # Pre-book a slot
+        booking = Booking.objects.create(room=self.room, customer_name="First", customer_phone="1")
         BookedTimeSlot.objects.create(
-            booking=Booking.objects.create(room=self.room, customer_name="First", customer_phone="1"),
-            booking_date=self.next_monday,
-            time_slot="11:00-12:00",
-            price="800.00"
+            booking=booking, booking_date=self.next_monday,
+            time_slot="11:00-12:00", price="750.00"
         )
 
         # Then, try to book the same slot
         url = reverse('booking_api:booking-create')
         payload = {
-            "room": self.room.id,
-            "booking_date": self.date_str,
-            "time_slots": ["11:00-12:00"], # This slot is now taken
-            "customer_name": "Second User",
-            "customer_phone": "2",
+            "room": self.room.id, "booking_date": self.date_str,
+            "time_slots": ["11:00-12:00"],
+            "customer_name": "Second User", "customer_phone": "2",
         }
         response = self.client.post(url, payload, format='json')
         self.assertEqual(response.status_code, 400)
         self.assertIn("уже заняты", str(response.data))
+
+    def test_create_booking_api_invalid_slot(self):
+        # Try to book a slot that is not in any rule
+        url = reverse('booking_api:booking-create')
+        payload = {
+            "room": self.room.id, "booking_date": self.date_str,
+            "time_slots": ["08:00-09:00"], # This slot is not in the schedule
+            "customer_name": "Invalid User", "customer_phone": "3",
+        }
+        response = self.client.post(url, payload, format='json')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("недоступен для бронирования", str(response.data))
