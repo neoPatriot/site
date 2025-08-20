@@ -10,7 +10,7 @@ body {
     background-color: #000;
     color: #f0f0f0;
     line-height: 1.6;
-    background-image: url('https://i.ibb.co/8LdVD0Z2/bg-masthead.jpg');
+    background-image: url('../images/background.jpg');
     background-size: cover;
     background-position: center;
     background-attachment: fixed;
