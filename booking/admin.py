@@ -1,21 +1,21 @@
 from django.contrib import admin
-from .models import Organization, Room, RoomSchedule, Booking, BookedTimeSlot
+from .models import Organization, Room, ScheduleRule, Booking, BookedTimeSlot
 
 @admin.register(Organization)
 class OrganizationAdmin(admin.ModelAdmin):
-    list_display = ('name', 'created_at')
-
-class RoomScheduleInline(admin.StackedInline):
-    model = RoomSchedule
-    can_delete = False
-    verbose_name_plural = 'Расписание'
-
+    list_display = ('name', 'phone', 'email', 'created_at')
+    search_fields = ('name', 'email')
     fieldsets = (
         (None, {
-            'fields': ('schedule',),
-            'description': 'JSON-объект. Ключ: "день-часы", значение: цена. Например: {"1-09:00-10:00": 500}'
+            'fields': ('name', 'description', 'phone', 'email')
         }),
     )
+
+class ScheduleRuleInline(admin.TabularInline):
+    model = ScheduleRule
+    extra = 1
+    verbose_name_plural = 'Правила расписания'
+    fields = ('day_of_week', 'start_time', 'end_time', 'price')
 
 
 @admin.register(Room)
@@ -23,7 +23,7 @@ class RoomAdmin(admin.ModelAdmin):
     list_display = ('title', 'organization', 'image', 'created_at')
     list_filter = ('organization',)
     search_fields = ('title',)
-    inlines = (RoomScheduleInline,)
+    inlines = (ScheduleRuleInline,)
     fieldsets = (
         (None, {
             'fields': ('organization', 'title', 'description', 'image')
