@@ -176,6 +176,8 @@ def booking_view(request):
 
                         booking = form.save(commit=False)
                         booking.room = room
+                        if request.user.is_authenticated:
+                            booking.user = request.user
                         booking.save()
 
                         slots_to_create = []
@@ -202,7 +204,10 @@ def booking_view(request):
                 except Exception:
                     pass
         else:
-            form = BookingForm()
+            initial_data = {}
+            if request.user.is_authenticated:
+                initial_data['customer_name'] = request.user.get_full_name() or request.user.username
+            form = BookingForm(initial=initial_data)
 
         context.update({
             'step': step, 'booking_date': booking_date,
@@ -220,6 +225,12 @@ def booking_success_view(request):
     }
     return render(request, 'booking/booking_success.html', context)
 
+from django.contrib.auth import login, authenticate, logout
+from django.conf import settings
+from django.views.decorators.http import require_GET
+import hmac
+import hashlib
+
 def home_view(request):
     rooms = Room.objects.all()
     context = {
@@ -228,3 +239,30 @@ def home_view(request):
         'rooms': rooms,
     }
     return render(request, 'booking/home.html', context)
+
+
+@require_GET
+def telegram_login_callback(request):
+    auth_data = request.GET.dict()
+    received_hash = auth_data.pop('hash', None)
+
+    if not received_hash:
+        return redirect('home')
+
+    sorted_keys = sorted(auth_data.keys())
+    data_check_string = "\n".join([f"{key}={auth_data[key]}" for key in sorted_keys])
+
+    secret_key = hashlib.sha256(settings.TELEGRAM_BOT_TOKEN.encode()).digest()
+    calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+
+    if calculated_hash == received_hash:
+        user = authenticate(request, telegram_data=auth_data)
+        if user is not None:
+            login(request, user)
+
+    return redirect('home')
+
+
+def logout_view(request):
+    logout(request)
+    return redirect('home')

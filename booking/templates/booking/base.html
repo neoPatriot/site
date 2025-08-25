@@ -24,6 +24,25 @@
                         <li><a href="{% url 'home' %}#contact">Контакты</a></li>
                         <li><a href="{% url 'booking:booking_view' %}">Забронировать</a></li>
                     </ul>
+                    <div class="auth-block">
+                        {% if user.is_authenticated %}
+                            <span class="welcome-msg">Привет, {{ user.first_name|default:user.username }}!</span>
+                            <a href="{% url 'logout' %}" class="btn-logout">Выйти</a>
+                        {% else %}
+                            <!--
+                            ###################################################################
+                            # ВНИМАНИЕ: Замените 'YOUR_BOT_USERNAME_HERE' на имя вашего бота.  #
+                            # Также, ваш домен (включая порт для разработки) должен быть       #
+                            # привязан к боту через команду /setdomain у @BotFather.          #
+                            ###################################################################
+                            -->
+                            <script async src="https://telegram.org/js/telegram-widget.js?22"
+                                    data-telegram-login="YOUR_BOT_USERNAME_HERE"
+                                    data-size="medium"
+                                    data-auth-url="{{ request.scheme }}://{{ request.get_host }}{% url 'telegram_login_callback' %}"
+                                    data-request-access="write"></script>
+                        {% endif %}
+                    </div>
                 </nav>
             </div>
         </div>

@@ -62,6 +62,11 @@ header {
     color: var(--secondary);
 }
 
+nav {
+    display: flex;
+    align-items: center;
+}
+
 nav ul {
     display: flex;
     list-style: none;
@@ -527,4 +532,31 @@ footer {
 
 .booking-form input, .booking-form textarea {
     background-color: rgba(255, 255, 255, 0.05);
+}
+
+/* --- Стили блока авторизации --- */
+.auth-block {
+    margin-left: 40px;
+    display: flex;
+    align-items: center;
+}
+.auth-block .welcome-msg {
+    margin-right: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+}
+.auth-block .btn-logout {
+    color: var(--dark-bg);
+    background-color: var(--light);
+    padding: 5px 15px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 700;
+    text-decoration: none;
+    transition: all 0.3s;
+    white-space: nowrap;
+}
+.auth-block .btn-logout:hover {
+    background-color: var(--secondary);
+    color: var(--light);
 }
