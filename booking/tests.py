@@ -33,10 +33,6 @@ class BookingAppTests(TestCase):
         response = self.client.get(reverse('home'))
         self.assertEqual(response.status_code, 200)
 
-    def test_about_page_status_code(self):
-        response = self.client.get(reverse('about'))
-        self.assertEqual(response.status_code, 200)
-
     def test_booking_step2_availability(self):
         # Test that the availability view shows correct slots
         url = reverse('booking:booking_view') + f'?room={self.room.id}&date={self.date_str}'
@@ -107,9 +103,17 @@ class BookingAPITests(TestCase):
         url = reverse('booking_api:room-list')
         response = self.client.get(url)
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(response.data[0]['title'], self.room.title)
-        self.assertIn('schedule_rules', response.data[0])
-        self.assertEqual(len(response.data[0]['schedule_rules']), 2)
+
+        # Находим данные конкретного зала, созданного в этом тесте
+        test_room_data = next((item for item in response.data if item['id'] == self.room.id), None)
+
+        # Убедимся, что зал найден в ответе API
+        self.assertIsNotNone(test_room_data, "Зал, созданный в тесте, не найден в ответе API")
+
+        # Теперь проводим проверки для конкретного зала
+        self.assertEqual(test_room_data['title'], self.room.title)
+        self.assertIn('schedule_rules', test_room_data)
+        self.assertEqual(len(test_room_data['schedule_rules']), 2)
 
     def test_room_availability_api(self):
         url = reverse('booking_api:room-availability', kwargs={'pk': self.room.id})

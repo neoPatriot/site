@@ -4,70 +4,77 @@
 {% block title %}{{ page_title|default:"Бронирование" }}{% endblock %}
 
 {% block content %}
-    <h1>{{ page_title|default:"Бронирование" }}</h1>
-    <hr style="border-color: #333; margin: 30px 0;">
-
-    {# Step 0: Room Selection #}
+    {# Step 0: Calendar Grid View #}
     {% if step == 0 %}
-        <h2>Шаг 1: Выберите зал</h2>
-        <div class="card-grid">
-            {% for room in rooms %}
-            <div class="card">
-                {% if room.image %}
-                    <img src="{{ room.image.url }}" alt="{{ room.title }}">
+    <div class="booking-page-container container">
+        <div class="section-title" style="margin-bottom: 40px;">
+            <h2>{{ page_title }}</h2>
+        </div>
+
+        <div class="room-calendars-grid">
+            {% for item in rooms_data %}
+            <div class="room-calendar-card">
+                <h3>{{ item.room.title }}</h3>
+                {% if item.room.image %}
+                    <img src="{{ item.room.image.url }}" alt="{{ item.room.title }}">
                 {% else %}
-                    <img src="{% static 'images/z-6-sq.png' %}" alt="Placeholder image">
+                    {# Provide a default placeholder image #}
+                    <img src="{% static 'images/placeholder.png' %}" alt="Изображение зала отсутствует">
                 {% endif %}
-                <div class="card-content">
-                    <h3 class="card-title">{{ room.title }}</h3>
-                    <a href="?room={{ room.id }}" class="btn">Выбрать</a>
-                </div>
+
+                <div class="calendar-title">{{ calendar_month_name }} {{ calendar_year }}</div>
+
+                <table class="calendar-table">
+                    <thead>
+                        <tr>
+                            <th>Пн</th><th>Вт</th><th>Ср</th><th>Чт</th><th>Пт</th><th>Сб</th><th>Вс</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for week in item.calendar %}
+                        <tr>
+                            {% for day in week %}
+                            <td class="day-cell {{ day.color }}">
+                                <a href="?room={{ item.room.id }}&date={{ day.date|date:'Y-m-d' }}">{{ day.day_number }}</a>
+                            </td>
+                            {% endfor %}
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
             </div>
             {% endfor %}
         </div>
-    {% endif %}
-
-    {# Step 1: Date Selection #}
-    {% if step == 1 %}
-        <h2>Шаг 2: Выберите дату для зала "{{ room.title }}"</h2>
-        <div style="text-align: center; margin: 20px 0;">
-            <input type="date" id="booking_date" min="{{ today|date:'Y-m-d' }}" max="{{ max_date|date:'Y-m-d' }}" class="date-input">
-            <button class="btn" onclick="selectDate()">Выбрать</button>
-        </div>
-        <style>
-            .date-input { padding: 10px; font-size: 16px; background-color: #333; border: 1px solid #555; color: #f0f0f0; border-radius: 4px; }
-        </style>
-        <script>
-            function selectDate() {
-                const date = document.getElementById('booking_date').value;
-                if (date) {
-                    window.location.href = `?room={{ room.id }}&date=${date}`;
-                }
-            }
-        </script>
+    </div>
     {% endif %}
 
     {# Step 2: Time Selection #}
     {% if step == 2 %}
-        <h2>Шаг 3: Выберите время для {{ booking_date|date:"d.m.Y" }}</h2>
-        <div id="time-grid" class="card-grid">
+    <div class="time-selection-grid container">
+        <div class="section-title">
+             <h2>Шаг 2: Выберите время</h2>
+        </div>
+        <p style="text-align: center; font-size: 1.2rem; margin-bottom: 30px;">
+            Зал: <strong>{{ room.title }}</strong>, Дата: <strong>{{ booking_date|date:"d.m.Y" }}</strong>
+        </p>
+
+        <div class="time-grid">
             {% for hour, price in available_hours.items %}
             <div class="hour-card" data-hour="{{ hour }}">
                 <strong>{{ hour }}</strong><br>
                 <span>{{ price }} руб.</span>
             </div>
             {% empty %}
-            <p style="grid-column: 1 / -1; text-align: center;">На выбранную дату свободных интервалов нет.</p>
+            <p style="grid-column: 1 / -1; text-align: center; font-size: 1.1rem; padding: 40px 0;">На выбранную дату свободных интервалов нет.</p>
             {% endfor %}
         </div>
-        <div style="text-align: center; margin-top: 30px;">
+
+        {% if available_hours %}
+        <div style="text-align: center; margin-top: 40px;">
             <button type="button" class="btn" onclick="submitTimes()">Продолжить</button>
         </div>
-        <style>
-            .hour-card { padding: 20px; text-align: center; cursor: pointer; border-radius: 4px; background-color: #252525; border: 1px solid #333; transition: background-color 0.2s; }
-            .hour-card:hover { background-color: #444; }
-            .hour-card.selected { background-color: #03dac6; color: #121212; }
-        </style>
+        {% endif %}
+
         <script>
             document.querySelectorAll('.hour-card').forEach(el => {
                 el.addEventListener('click', () => {
@@ -85,11 +92,16 @@
                 }
             }
         </script>
+    </div>
     {% endif %}
 
     {# Step 3: Contact Form #}
     {% if step == 3 %}
-        <h2>Шаг 4: Контактные данные и подтверждение</h2>
+    <div class="contact-form-container container">
+        <div class="section-title">
+             <h2>Шаг 3: Подтверждение</h2>
+        </div>
+
         <div class="summary">
             <h3>Вы выбрали:</h3>
             <p><strong>Зал:</strong> {{ room.title }}</p>
@@ -100,27 +112,17 @@
                 <li>{{ slot }} ({{ price }} руб.)</li>
                 {% endfor %}
             </ul>
-            <p><strong>Итого:</strong> {{ total_price }} руб.</p>
+            <hr style="border-color: rgba(255,255,255,0.1); margin: 15px 0;">
+            <p><strong>Итого к оплате:</strong> {{ total_price }} руб.</p>
         </div>
 
         <form method="post" class="booking-form">
             {% csrf_token %}
             {{ form.as_p }}
-            <button type="submit" class="btn">Забронировать</button>
+            <div style="text-align: center; margin-top: 30px;">
+                <button type="submit" class="btn">Забронировать</button>
+            </div>
         </form>
-        <style>
-            .summary { background-color: #252525; padding: 20px; border-radius: 8px; margin-bottom: 30px; }
-            .booking-form p { margin-bottom: 15px; }
-            .booking-form label { display: block; margin-bottom: 5px; color: #aaa; }
-            .booking-form input, .booking-form textarea {
-                width: 100%;
-                padding: 12px;
-                background-color: #333;
-                border: 1px solid #555;
-                color: #f0f0f0;
-                border-radius: 4px;
-                box-sizing: border-box;
-            }
-        </style>
+    </div>
     {% endif %}
 {% endblock %}
