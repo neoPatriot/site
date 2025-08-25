@@ -3,29 +3,49 @@
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
-    <title>{% block title %}{{ page_title|default:"Главная" }}{% endblock %} :: {{ site_title|default:"Продюсерский центр Big Z" }}</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}BIGZ - Творческое пространство{% endblock %}</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Montserrat:wght@400;700;900&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="{% static 'css/style.css' %}">
 </head>
 <body>
-    <div class="site-wrapper">
-        <header class="site-header">
-            <div class="site-title">
-                <a href="{% url 'home' %}">«Продюсерский центр Big "Z"»</a>
+    <!-- Шапка -->
+    <header>
+        <div class="container">
+            <div class="header-content">
+                <div class="logo">BIG<span>Z</span></div>
+                <nav>
+                    <ul>
+                        <li><a href="{% url 'home' %}#hero">Главная</a></li>
+                        <li><a href="{% url 'home' %}#about">О нас</a></li>
+                        <li><a href="{% url 'home' %}#events">Мероприятия</a></li>
+                        <li><a href="{% url 'home' %}#contact">Контакты</a></li>
+                    </ul>
+                </nav>
             </div>
-            <nav class="main-nav">
-                <a href="#">Z-Studio</a>
-                <a href="#">Z-School</a>
-                <a href="#">Фото Z</a>
-                <a href="{% url 'about' %}">О нас</a>
-            </nav>
-        </header>
+        </div>
+    </header>
 
-        <main class="site-content">
-            {% block content %}{% endblock %}
-        </main>
-    </div>
+    {% block content %}{% endblock %}
+
+    <!-- Футер -->
+    <footer>
+        <div class="container">
+            <div class="footer-content">
+                <div class="logo">BIG<span>Z</span></div>
+                <div class="social-links">
+                    <a href="#">VK</a>
+                    <a href="#">TG</a>
+                    <a href="#">IG</a>
+                    <a href="#">YT</a>
+                </div>
+            </div>
+            <div class="copyright">
+                <p>&copy; 2024 BIGZ. Все права защищены.</p>
+            </div>
+        </div>
+    </footer>
 </body>
 </html>

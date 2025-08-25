@@ -33,10 +33,6 @@ class BookingAppTests(TestCase):
         response = self.client.get(reverse('home'))
         self.assertEqual(response.status_code, 200)
 
-    def test_about_page_status_code(self):
-        response = self.client.get(reverse('about'))
-        self.assertEqual(response.status_code, 200)
-
     def test_booking_step2_availability(self):
         # Test that the availability view shows correct slots
         url = reverse('booking:booking_view') + f'?room={self.room.id}&date={self.date_str}'

@@ -36,7 +36,6 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path("", booking_views.home_view, name="home"),
-    path("about/", booking_views.about_view, name="about"),
     path("admin/", admin.site.urls),
     path("book/", include("booking.urls", namespace="booking")),
 

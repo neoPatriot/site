@@ -202,9 +202,3 @@ def home_view(request):
     }
     return render(request, 'booking/home.html', context)
 
-def about_view(request):
-    context = {
-        'site_title': "«Продюсерский центр Big \"Z\"»",
-        'page_title': "О нас",
-    }
-    return render(request, 'booking/about.html', context)
