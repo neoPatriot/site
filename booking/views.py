@@ -8,20 +8,21 @@ import datetime
 import calendar
 from django.db.models import Count
 
+RUSSIAN_MONTH_NAMES = {
+    1: "Январь", 2: "Февраль", 3: "Март", 4: "Апрель", 5: "Май", 6: "Июнь",
+    7: "Июль", 8: "Август", 9: "Сентябрь", 10: "Октябрь", 11: "Ноябрь", 12: "Декабрь"
+}
+
 def get_calendar_data(room, year, month):
     """
     Подготавливает данные для рендеринга календаря на месяц для конкретного зала.
     """
     cal = calendar.Calendar()
-    # monthdatescalendar возвращает список недель, где каждый день - это объект datetime.date
     month_days = cal.monthdatescalendar(year, month)
 
-    # Получаем все правила для данного зала
     rules_for_room = ScheduleRule.objects.filter(room=room)
-    # Преобразуем в словарь для быстрого доступа по дню недели
     rules_by_day = {rule.day_of_week: rule for rule in rules_for_room}
 
-    # Получаем все забронированные слоты для этого зала за весь месяц одним запросом
     booked_slots_for_month = BookedTimeSlot.objects.filter(
         booking__room=room,
         booking_date__year=year,
@@ -29,21 +30,17 @@ def get_calendar_data(room, year, month):
         is_active=True
     ).values('booking_date').annotate(count=Count('id'))
 
-    # Преобразуем в словарь для быстрого доступа по дате
     booked_counts = {item['booking_date']: item['count'] for item in booked_slots_for_month}
 
     calendar_data = []
     for week in month_days:
         week_data = []
         for day_date in week:
-            # Определяем общее количество слотов для этого дня недели
             rule = rules_by_day.get(day_date.isoweekday())
             total_slots = int(rule.end_time.hour - rule.start_time.hour) if rule else 0
-
-            # Получаем количество забронированных слотов
             booked_count = booked_counts.get(day_date, 0)
 
-            color = 'grey'  # По умолчанию, если на день нет правил
+            color = 'grey'
             if total_slots > 0:
                 if booked_count == 0:
                     color = 'green'
@@ -52,9 +49,8 @@ def get_calendar_data(room, year, month):
                 elif booked_count > total_slots / 2:
                     color = 'yellow'
                 else:
-                    color = 'green'  # Свободно больше половины
+                    color = 'green'
 
-            # Отмечаем неактивные дни (прошедшие или из другого месяца)
             if day_date.month != month or day_date < datetime.date.today():
                 color = 'disabled'
 
@@ -81,8 +77,27 @@ def booking_view(request):
     if not room_id:
         step = 0
         today = datetime.date.today()
-        month = today.month
-        year = today.year
+
+        try:
+            year = int(request.GET.get('year', today.year))
+            month = int(request.GET.get('month', today.month))
+            # Не даем уйти в прошлое дальше текущего месяца
+            if datetime.date(year, month, 1) < datetime.date(today.year, today.month, 1):
+                year, month = today.year, today.month
+        except (ValueError, TypeError):
+            year, month = today.year, today.month
+
+        # Расчет следующего месяца
+        next_month_date = (datetime.date(year, month, 1) + datetime.timedelta(days=32)).replace(day=1)
+        next_month = next_month_date.month
+        next_year = next_month_date.year
+
+        # Расчет предыдущего месяца
+        prev_month_date = (datetime.date(year, month, 1) - datetime.timedelta(days=1)).replace(day=1)
+        prev_month = prev_month_date.month
+        prev_year = prev_month_date.year
+
+        show_prev_button = datetime.date(year, month, 1) > datetime.date(today.year, today.month, 1)
 
         rooms = Room.objects.all()
         rooms_with_calendars = []
@@ -93,16 +108,19 @@ def booking_view(request):
                 'calendar': calendar_data
             })
 
-        # Название месяца для отображения в заголовке
-        # Для корректного отображения на русском может потребоваться настройка локали
-        month_name = calendar.month_name[month]
+        month_name = RUSSIAN_MONTH_NAMES.get(month, "")
 
         context.update({
             'step': step,
             'page_title': "Выберите зал и дату",
             'rooms_data': rooms_with_calendars,
-            'calendar_month_name': month_name.capitalize(),
+            'calendar_month_name': month_name,
             'calendar_year': year,
+            'next_month': next_month,
+            'next_year': next_year,
+            'prev_month': prev_month,
+            'prev_year': prev_year,
+            'show_prev_button': show_prev_button,
         })
         return render(request, 'booking/booking.html', context)
 
@@ -179,7 +197,6 @@ def booking_view(request):
                             is_active=True
                         ).exists()
                         if already_booked:
-                            # Можно добавить сообщение об ошибке для пользователя
                             return redirect(request.path_info + f"?room={room_id}&date={booking_date_str}")
 
                         booking = form.save(commit=False)
@@ -208,7 +225,6 @@ def booking_view(request):
 
                         return redirect(reverse('booking:booking_success'))
                 except Exception:
-                    # Можно логировать ошибку
                     pass
         else:
             form = BookingForm()
