@@ -20,13 +20,13 @@ class ScheduleRuleInline(admin.TabularInline):
 
 @admin.register(Room)
 class RoomAdmin(admin.ModelAdmin):
-    list_display = ('title', 'organization', 'image', 'created_at')
+    list_display = ('title', 'organization', 'slot_duration_minutes', 'image', 'created_at')
     list_filter = ('organization',)
     search_fields = ('title',)
     inlines = (ScheduleRuleInline,)
     fieldsets = (
         (None, {
-            'fields': ('organization', 'title', 'description', 'image')
+            'fields': ('organization', 'title', 'description', 'image', 'slot_duration_minutes')
         }),
     )
 
