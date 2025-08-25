@@ -19,10 +19,18 @@
                     <img src="{{ item.room.image.url }}" alt="{{ item.room.title }}">
                 {% else %}
                     {# Provide a default placeholder image #}
-                    <img src="{% static 'images/placeholder.png' %}" alt="Изображение зала отсутствует">
+                    <img src="{% static 'images/z-1-sq.jpg' %}" alt="Изображение зала отсутствует">
                 {% endif %}
 
-                <div class="calendar-title">{{ calendar_month_name }} {{ calendar_year }}</div>
+                <div class="calendar-title">
+                    {% if show_prev_button %}
+                        <a href="?year={{ prev_year }}&month={{ prev_month }}">&larr;</a>
+                    {% else %}
+                        <span style="width: 35px;"></span> {# Placeholder to keep alignment #}
+                    {% endif %}
+                    <span>{{ calendar_month_name }} {{ calendar_year }}</span>
+                    <a href="?year={{ next_year }}&month={{ next_month }}">&rarr;</a>
+                </div>
 
                 <table class="calendar-table">
                     <thead>

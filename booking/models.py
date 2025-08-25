@@ -24,6 +24,7 @@ class Room(models.Model):
     title = models.CharField(max_length=255, verbose_name="Название зала")
     description = models.TextField(blank=True, verbose_name="Описание")
     image = models.ImageField(upload_to='room_images/', blank=True, null=True, verbose_name="Изображение")
+    slot_duration_minutes = models.IntegerField(default=60, verbose_name="Длительность слота (минут)")
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

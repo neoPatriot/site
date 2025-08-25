@@ -414,10 +414,25 @@ footer {
 }
 
 .calendar-title {
-    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
     font-size: 1.2rem;
     font-weight: 700;
     margin-bottom: 20px;
+}
+
+.calendar-title a {
+    color: var(--accent);
+    text-decoration: none;
+    font-size: 2rem;
+    line-height: 1;
+    padding: 0 10px;
+    transition: color 0.3s;
+}
+
+.calendar-title a:hover {
+    color: var(--secondary);
 }
 
 .calendar-table {
