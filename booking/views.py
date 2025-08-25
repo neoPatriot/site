@@ -187,15 +187,15 @@ def booking_view(request):
                             )
                         BookedTimeSlot.objects.bulk_create(slots_to_create)
 
-                        slots_details = "\\n".join([f"- {s} ({p} руб.)" for s, p in booking_summary.items()])
+                        slots_details = "\n".join([f"- {s} ({p} руб.)" for s, p in booking_summary.items()])
                         message = (
-                            f"🛎 *Новая заявка #{booking.id}*\\n\\n"
-                            f"*Зал:* {booking.room.title}\\n"
-                            f"*Дата:* {booking_date.strftime('%d.%m.%Y')}\\n"
-                            f"*Имя:* {booking.customer_name}\\n"
-                            f"*Телефон:* {booking.customer_phone}\\n\\n"
-                            f"*Выбранные интервалы:*\\n{slots_details}\\n\\n"
-                            f"*Итого:* {total_price} руб.\\n"
+                            f"🛎 *Новая заявка #{booking.id}*\n\n"
+                            f"*Зал:* {booking.room.title}\n"
+                            f"*Дата:* {booking_date.strftime('%d.%m.%Y')}\n"
+                            f"*Имя:* {booking.customer_name}\n"
+                            f"*Телефон:* {booking.customer_phone}\n\n"
+                            f"*Выбранные интервалы:*\n{slots_details}\n\n"
+                            f"*Итого:* {total_price:.2f} руб.\n"
                             f"*Комментарий:* {booking.customer_comment or 'отсутствует'}"
                         )
                         send_telegram_message(message)

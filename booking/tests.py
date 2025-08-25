@@ -1,6 +1,7 @@
 from django.test import TestCase
 from django.urls import reverse
 from django.contrib.auth.models import User
+from unittest.mock import patch
 from .models import Organization, Room, ScheduleRule, Booking, BookedTimeSlot
 import json
 from rest_framework.test import APIClient
@@ -57,6 +58,24 @@ class BookingAppTests(TestCase):
         self.assertEqual(Booking.objects.count(), 1)
         created_slot = BookedTimeSlot.objects.first()
         self.assertEqual(created_slot.price, Decimal("500.00"))
+
+    @patch('booking.views.send_telegram_message')
+    def test_booking_creation_sends_correct_telegram_message(self, mock_send_telegram):
+        time_slot = "11:00-12:00"
+        booking_data = {'customer_name': 'Test User', 'customer_phone': '+1234567890'}
+        post_url = reverse('booking:booking_view') + f'?room={self.room.id}&date={self.date_str}&time={time_slot}'
+
+        self.client.post(post_url, booking_data)
+
+        # Проверяем, что функция отправки была вызвана один раз
+        self.assertEqual(mock_send_telegram.call_count, 1)
+
+        # Получаем аргументы, с которыми была вызвана функция
+        message = mock_send_telegram.call_args[0][0]
+
+        # Проверяем, что в сообщении нет экранированных \n и цена отформатирована
+        self.assertNotIn('\\n', message)
+        self.assertIn('*Итого:* 500.00 руб.', message)
 
 
 class BookingAPITests(TestCase):
