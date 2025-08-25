@@ -5,11 +5,71 @@ from .models import Room, Booking, BookedTimeSlot, ScheduleRule
 from .forms import BookingForm
 from .telegram_sender import send_telegram_message
 import datetime
+import calendar
+from django.db.models import Count
+
+def get_calendar_data(room, year, month):
+    """
+    Подготавливает данные для рендеринга календаря на месяц для конкретного зала.
+    """
+    cal = calendar.Calendar()
+    # monthdatescalendar возвращает список недель, где каждый день - это объект datetime.date
+    month_days = cal.monthdatescalendar(year, month)
+
+    # Получаем все правила для данного зала
+    rules_for_room = ScheduleRule.objects.filter(room=room)
+    # Преобразуем в словарь для быстрого доступа по дню недели
+    rules_by_day = {rule.day_of_week: rule for rule in rules_for_room}
+
+    # Получаем все забронированные слоты для этого зала за весь месяц одним запросом
+    booked_slots_for_month = BookedTimeSlot.objects.filter(
+        booking__room=room,
+        booking_date__year=year,
+        booking_date__month=month,
+        is_active=True
+    ).values('booking_date').annotate(count=Count('id'))
+
+    # Преобразуем в словарь для быстрого доступа по дате
+    booked_counts = {item['booking_date']: item['count'] for item in booked_slots_for_month}
+
+    calendar_data = []
+    for week in month_days:
+        week_data = []
+        for day_date in week:
+            # Определяем общее количество слотов для этого дня недели
+            rule = rules_by_day.get(day_date.isoweekday())
+            total_slots = int(rule.end_time.hour - rule.start_time.hour) if rule else 0
+
+            # Получаем количество забронированных слотов
+            booked_count = booked_counts.get(day_date, 0)
+
+            color = 'grey'  # По умолчанию, если на день нет правил
+            if total_slots > 0:
+                if booked_count == 0:
+                    color = 'green'
+                elif booked_count >= total_slots:
+                    color = 'red'
+                elif booked_count > total_slots / 2:
+                    color = 'yellow'
+                else:
+                    color = 'green'  # Свободно больше половины
+
+            # Отмечаем неактивные дни (прошедшие или из другого месяца)
+            if day_date.month != month or day_date < datetime.date.today():
+                color = 'disabled'
+
+            week_data.append({
+                'date': day_date,
+                'day_number': day_date.day,
+                'color': color
+            })
+        calendar_data.append(week_data)
+
+    return calendar_data
+
 
 def booking_view(request):
-    step = 0
     context = {
-        'step': step,
         'site_title': "«Продюсерский центр Big \"Z\"» | Бронирование",
     }
 
@@ -17,63 +77,63 @@ def booking_view(request):
     booking_date_str = request.GET.get('date')
     time_slots_str = request.GET.get('time')
 
-    # Step 0: Show all rooms
+    # Шаг 0: Показываем все залы с их календарями
     if not room_id:
-        context['rooms'] = Room.objects.all()
-        return render(request, 'booking/booking.html', context)
-
-    # From here on, a room is selected
-    step = 1
-    room = get_object_or_404(Room, id=room_id)
-    context.update({'step': step, 'room': room})
-
-    # Step 1: A room is selected, show calendar
-    if room_id and not booking_date_str:
+        step = 0
         today = datetime.date.today()
-        # You can implement a more complex calendar generation if needed
+        month = today.month
+        year = today.year
+
+        rooms = Room.objects.all()
+        rooms_with_calendars = []
+        for room in rooms:
+            calendar_data = get_calendar_data(room, year, month)
+            rooms_with_calendars.append({
+                'room': room,
+                'calendar': calendar_data
+            })
+
+        # Название месяца для отображения в заголовке
+        # Для корректного отображения на русском может потребоваться настройка локали
+        month_name = calendar.month_name[month]
+
         context.update({
-            'page_title': f"{room.title} - Выберите дату",
-            'today': today,
-            'max_date': today + datetime.timedelta(days=30),
+            'step': step,
+            'page_title': "Выберите зал и дату",
+            'rooms_data': rooms_with_calendars,
+            'calendar_month_name': month_name.capitalize(),
+            'calendar_year': year,
         })
         return render(request, 'booking/booking.html', context)
 
-    # Step 2: Date is selected, show available time slots
+    # Если выбран зал, переходим к следующим шагам
+    room = get_object_or_404(Room, id=room_id)
+    context.update({'room': room})
+
+    # Шаг 2: Выбрана дата, показываем доступные временные слоты
     if room_id and booking_date_str and not time_slots_str:
         step = 2
         booking_date = datetime.datetime.strptime(booking_date_str, '%Y-%m-%d').date()
-
-        # Get schedule rules for the given day of the week
         day_of_week = booking_date.isoweekday()
         rules = ScheduleRule.objects.filter(room=room, day_of_week=day_of_week)
-
-        # Get already booked slots for the date
         booked_slots = BookedTimeSlot.objects.filter(
-            booking__room=room,
-            booking_date=booking_date,
-            is_active=True
+            booking__room=room, booking_date=booking_date, is_active=True
         ).values_list('time_slot', flat=True)
 
-        # Determine available hourly slots based on rules
         available_hours = {}
         for i in range(24):
             current_time = datetime.time(i)
-            # The time_key is a string like "09:00-10:00"
             time_key = f"{i:02d}:00-{(i + 1):02d}:00"
 
-            # Check if today and the hour has passed
             if booking_date == datetime.date.today() and current_time < datetime.datetime.now().time():
                 continue
-
-            # Check if the slot is already booked
             if time_key in booked_slots:
                 continue
 
-            # Find a rule that applies to this hour and get its price
             for rule in rules:
                 if rule.start_time <= current_time < rule.end_time:
                     available_hours[time_key] = rule.price
-                    break  # First matching rule wins
+                    break
 
         context.update({
             'step': step,
@@ -83,34 +143,27 @@ def booking_view(request):
         })
         return render(request, 'booking/booking.html', context)
 
-    # Step 3 & 4: Time is selected, show contact form (GET) or process booking (POST)
+    # Шаги 3 и 4: Выбрано время, показываем форму или обрабатываем бронь
     if room_id and booking_date_str and time_slots_str:
         step = 3
         booking_date = datetime.datetime.strptime(booking_date_str, '%Y-%m-%d').date()
         selected_slots = time_slots_str.split(',')
-
-        # Calculate total price and prepare summary based on selected slots
-        booking_summary = {}
-        total_price = 0
         day_of_week = booking_date.isoweekday()
         rules = ScheduleRule.objects.filter(room=room, day_of_week=day_of_week)
 
+        booking_summary = {}
+        total_price = 0
         for slot in selected_slots:
-            price = 0  # Default price if no rule is found
+            price = 0
             try:
-                # The slot is a string like "10:00-11:00". We need the start time.
                 start_hour = int(slot.split(':')[0])
                 slot_time = datetime.time(start_hour)
-
-                # Find the price for this specific slot from the rules
                 for rule in rules:
                     if rule.start_time <= slot_time < rule.end_time:
                         price = rule.price
                         break
             except (ValueError, IndexError):
-                # Ignore malformed slots, though this shouldn't happen with our frontend
                 pass
-
             booking_summary[slot] = price
             total_price += price
 
@@ -119,55 +172,44 @@ def booking_view(request):
             if form.is_valid():
                 try:
                     with transaction.atomic():
-                        # Final availability check
                         already_booked = BookedTimeSlot.objects.filter(
                             booking__room=room,
                             booking_date=booking_date,
                             time_slot__in=selected_slots,
                             is_active=True
                         ).exists()
-
                         if already_booked:
-                            # Handle error - slots taken
-                            # You should add a message to the user
+                            # Можно добавить сообщение об ошибке для пользователя
                             return redirect(request.path_info + f"?room={room_id}&date={booking_date_str}")
 
                         booking = form.save(commit=False)
                         booking.room = room
                         booking.save()
 
-                        slots_to_create = []
-                        for slot, price in booking_summary.items():
-                            slots_to_create.append(
-                                BookedTimeSlot(
-                                    booking=booking,
-                                    booking_date=booking_date,
-                                    time_slot=slot,
-                                    price=price,
-                                    is_active=True
-                                )
-                            )
-                        BookedTimeSlot.objects.bulk_create(slots_to_create)
+                        BookedTimeSlot.objects.bulk_create([
+                            BookedTimeSlot(
+                                booking=booking, booking_date=booking_date,
+                                time_slot=slot, price=price, is_active=True
+                            ) for slot, price in booking_summary.items()
+                        ])
 
-                        # Send Telegram notification
-                        slots_details = "\n".join([f"- {slot} ({price} руб.)" for slot, price in booking_summary.items()])
+                        slots_details = "\\n".join([f"- {s} ({p} руб.)" for s, p in booking_summary.items()])
                         message = (
-                            f"🛎 *Новая заявка #{booking.id}*\n\n"
-                            f"*Зал:* {booking.room.title}\n"
-                            f"*Дата:* {booking_date.strftime('%d.%m.%Y')}\n"
-                            f"*Имя:* {booking.customer_name}\n"
-                            f"*Телефон:* {booking.customer_phone}\n\n"
-                            f"*Выбранные интервалы:*\n{slots_details}\n\n"
-                            f"*Итого:* {total_price} руб.\n"
+                            f"🛎 *Новая заявка #{booking.id}*\\n\\n"
+                            f"*Зал:* {booking.room.title}\\n"
+                            f"*Дата:* {booking_date.strftime('%d.%m.%Y')}\\n"
+                            f"*Имя:* {booking.customer_name}\\n"
+                            f"*Телефон:* {booking.customer_phone}\\n\\n"
+                            f"*Выбранные интервалы:*\\n{slots_details}\\n\\n"
+                            f"*Итого:* {total_price} руб.\\n"
                             f"*Комментарий:* {booking.customer_comment or 'отсутствует'}"
                         )
                         send_telegram_message(message)
 
                         return redirect(reverse('booking:booking_success'))
-                except Exception as e:
-                    # Handle transaction error
-                    # Log the error e
-                    pass # Fall through to render form with errors
+                except Exception:
+                    # Можно логировать ошибку
+                    pass
         else:
             form = BookingForm()
 
@@ -181,7 +223,6 @@ def booking_view(request):
         })
         return render(request, 'booking/booking.html', context)
 
-    # Fallback redirect to the start
     return redirect(reverse('booking:booking_view'))
 
 
@@ -192,8 +233,8 @@ def booking_success_view(request):
     }
     return render(request, 'booking/booking_success.html', context)
 
+
 def home_view(request):
-    # I need to add image to room model to make this dynamic
     rooms = Room.objects.all()
     context = {
         'site_title': "«Продюсерский центр Big \"Z\"»",
@@ -201,4 +242,3 @@ def home_view(request):
         'rooms': rooms,
     }
     return render(request, 'booking/home.html', context)
-

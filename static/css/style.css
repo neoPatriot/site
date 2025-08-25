@@ -375,3 +375,141 @@ footer {
         margin-bottom: 30px;
     }
 }
+
+/* --- Стили страницы бронирования --- */
+
+.booking-page-container {
+    padding-top: 120px; /* Отступ от фиксированной шапки */
+    padding-bottom: 60px;
+    min-height: 100vh;
+}
+
+.room-calendars-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+    gap: 30px;
+}
+
+.room-calendar-card {
+    background-color: rgba(30, 30, 30, 0.7);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 10px;
+    padding: 20px;
+    backdrop-filter: blur(5px);
+}
+
+.room-calendar-card h3 {
+    text-align: center;
+    color: var(--accent);
+    margin-bottom: 10px;
+    font-size: 1.5rem;
+}
+
+.room-calendar-card img {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.calendar-title {
+    text-align: center;
+    font-size: 1.2rem;
+    font-weight: 700;
+    margin-bottom: 20px;
+}
+
+.calendar-table {
+    width: 100%;
+    border-collapse: collapse;
+    table-layout: fixed;
+}
+
+.calendar-table th {
+    padding: 10px 5px;
+    text-align: center;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    color: var(--accent);
+}
+
+.calendar-table td {
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    text-align: center;
+    height: 50px;
+    vertical-align: middle;
+    font-weight: 700;
+    transition: background-color 0.3s;
+}
+
+.day-cell a {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    color: var(--light);
+    text-decoration: none;
+    border-radius: 3px;
+}
+
+.day-cell.green a:hover { background-color: rgba(0, 255, 0, 0.2); }
+.day-cell.yellow a:hover { background-color: rgba(255, 255, 0, 0.2); }
+.day-cell.red a:hover { background-color: rgba(255, 0, 0, 0.2); }
+
+.day-cell.green { background-color: #2e6b2e; }
+.day-cell.yellow { background-color: #b0a000; }
+.day-cell.red { background-color: #8b2c2c; }
+.day-cell.disabled {
+    background-color: #222;
+}
+.day-cell.disabled a {
+    color: #555;
+    pointer-events: none;
+}
+
+/* Стили для шагов выбора времени и формы */
+.time-selection-grid, .contact-form-container {
+    padding-top: 120px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.time-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    gap: 15px;
+    margin-top: 20px;
+}
+
+.hour-card {
+    padding: 15px;
+    text-align: center;
+    cursor: pointer;
+    border-radius: 5px;
+    background-color: rgba(255, 255, 255, 0.05);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+    transition: all 0.3s;
+}
+.hour-card:hover {
+    border-color: var(--accent);
+}
+.hour-card.selected {
+    background-color: var(--secondary);
+    color: var(--light);
+    transform: scale(1.05);
+    border-color: var(--secondary);
+}
+
+.summary {
+    background-color: rgba(255, 255, 255, 0.05);
+    padding: 20px;
+    border-radius: 8px;
+    margin-bottom: 30px;
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.booking-form input, .booking-form textarea {
+    background-color: rgba(255, 255, 255, 0.05);
+}
