@@ -24,6 +24,14 @@
                         <li><a href="{% url 'home' %}#contact">Контакты</a></li>
                         <li><a href="{% url 'booking:booking_view' %}">Забронировать</a></li>
                     </ul>
+                    <div class="auth-block">
+                        {% if user.is_authenticated %}
+                            <span class="welcome-msg">Привет, {{ user.first_name|default:user.username }}!</span>
+                            <a href="{% url 'logout' %}" class="btn-logout">Выйти</a>
+                        {% else %}
+                            <a href="{% url 'login_page' %}" class="btn-login">Регистрация / Войти</a>
+                        {% endif %}
+                    </div>
                 </nav>
             </div>
         </div>
@@ -48,5 +56,6 @@
             </div>
         </div>
     </footer>
+    <script src="{% static 'js/scripts.js' %}" defer></script>
 </body>
 </html>

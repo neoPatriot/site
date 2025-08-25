@@ -71,6 +71,7 @@ class Booking(models.Model):
         ('cancelled', 'Отменена'),
     ]
 
+    user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='bookings', verbose_name="Пользователь")
     room = models.ForeignKey(Room, on_delete=models.PROTECT, related_name='bookings', verbose_name="Зал")
     customer_name = models.CharField(max_length=100, verbose_name="Имя клиента")
     customer_phone = models.CharField(max_length=20, verbose_name="Телефон клиента")
@@ -106,3 +107,21 @@ class BookedTimeSlot(models.Model):
         verbose_name = "Забронированный слот"
         verbose_name_plural = "Забронированные слоты"
         unique_together = ('booking_date', 'time_slot', 'booking')
+
+
+class TelegramUser(models.Model):
+    """Профиль пользователя, связанный с аккаунтом Telegram."""
+    user = models.OneToOneField(User, on_delete=models.CASCADE, related_name='telegram_profile', verbose_name="Пользователь Django")
+    telegram_id = models.BigIntegerField(unique=True, verbose_name="Telegram ID")
+    first_name = models.CharField(max_length=255, verbose_name="Имя")
+    last_name = models.CharField(max_length=255, blank=True, null=True, verbose_name="Фамилия")
+    username = models.CharField(max_length=255, blank=True, null=True, verbose_name="Username Telegram")
+    photo_url = models.URLField(max_length=2048, blank=True, null=True, verbose_name="URL фото")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return f"Профиль Telegram для {self.user.username}"
+
+    class Meta:
+        verbose_name = "Профиль Telegram"
+        verbose_name_plural = "Профили Telegram"

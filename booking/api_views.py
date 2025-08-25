@@ -51,7 +51,11 @@ class BookingCreateAPIView(generics.CreateAPIView):
     serializer_class = BookingCreateSerializer
 
     def perform_create(self, serializer):
-        booking = serializer.save()
+        if self.request.user.is_authenticated:
+            booking = serializer.save(user=self.request.user)
+        else:
+            booking = serializer.save()
+
         total_price = sum(slot.price for slot in booking.time_slots.all())
         slots_details = "\n".join([f"- {slot.time_slot} ({slot.price} руб.)" for slot in booking.time_slots.all()])
 

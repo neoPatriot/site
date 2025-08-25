@@ -68,14 +68,20 @@ class BookingCreateSerializer(serializers.Serializer):
         room = validated_data['room']
         booking_date = validated_data['booking_date']
         time_slots = validated_data['time_slots']
+        user = validated_data.get('user', None)
+        customer_name = validated_data['customer_name']
+
+        if user and user.is_authenticated:
+            customer_name = user.get_full_name() or user.username
 
         rules = ScheduleRule.objects.filter(room=room, day_of_week=booking_date.isoweekday())
 
         try:
             with transaction.atomic():
                 booking = Booking.objects.create(
+                    user=user,
                     room=room,
-                    customer_name=validated_data['customer_name'],
+                    customer_name=customer_name,
                     customer_phone=validated_data['customer_phone'],
                     customer_comment=validated_data.get('customer_comment', ''),
                 )

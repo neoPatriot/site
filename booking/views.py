@@ -16,16 +16,27 @@ RUSSIAN_MONTH_NAMES = {
 def _generate_slots(start_time, end_time, duration_minutes):
     """Генерирует список временных слотов (строк) на основе времени начала, окончания и длительности."""
     slots = []
-    current_time = datetime.datetime.combine(datetime.date.today(), start_time)
-    end_dt = datetime.datetime.combine(datetime.date.today(), end_time)
+    today = datetime.date.today()
+    current_dt = datetime.datetime.combine(today, start_time)
+    end_dt = datetime.datetime.combine(today, end_time)
+
+    # Если время окончания 00:00, считаем это концом дня (24:00)
+    if end_time == datetime.time(0, 0):
+        end_dt += datetime.timedelta(days=1)
+
     duration = datetime.timedelta(minutes=duration_minutes)
 
-    while current_time < end_dt:
-        slot_end_time = current_time + duration
-        if slot_end_time > end_dt:
+    while current_dt < end_dt:
+        slot_end_dt = current_dt + duration
+        if slot_end_dt > end_dt:
             break
-        slots.append(f"{current_time.strftime('%H:%M')}-{slot_end_time.strftime('%H:%M')}")
-        current_time += duration
+
+        start_str = current_dt.strftime('%H:%M')
+        # Если конечный слот выпадает на полночь, отображаем как 24:00 для понятности
+        end_str = "24:00" if slot_end_dt.time() == datetime.time(0, 0) else slot_end_dt.strftime('%H:%M')
+
+        slots.append(f"{start_str}-{end_str}")
+        current_dt += duration
     return slots
 
 def get_calendar_data(room, year, month):
@@ -176,6 +187,8 @@ def booking_view(request):
 
                         booking = form.save(commit=False)
                         booking.room = room
+                        if request.user.is_authenticated:
+                            booking.user = request.user
                         booking.save()
 
                         slots_to_create = []
@@ -185,15 +198,15 @@ def booking_view(request):
                             )
                         BookedTimeSlot.objects.bulk_create(slots_to_create)
 
-                        slots_details = "\\n".join([f"- {s} ({p} руб.)" for s, p in booking_summary.items()])
+                        slots_details = "\n".join([f"- {s} ({p} руб.)" for s, p in booking_summary.items()])
                         message = (
-                            f"🛎 *Новая заявка #{booking.id}*\\n\\n"
-                            f"*Зал:* {booking.room.title}\\n"
-                            f"*Дата:* {booking_date.strftime('%d.%m.%Y')}\\n"
-                            f"*Имя:* {booking.customer_name}\\n"
-                            f"*Телефон:* {booking.customer_phone}\\n\\n"
-                            f"*Выбранные интервалы:*\\n{slots_details}\\n\\n"
-                            f"*Итого:* {total_price} руб.\\n"
+                            f"🛎 *Новая заявка #{booking.id}*\n\n"
+                            f"*Зал:* {booking.room.title}\n"
+                            f"*Дата:* {booking_date.strftime('%d.%m.%Y')}\n"
+                            f"*Имя:* {booking.customer_name}\n"
+                            f"*Телефон:* {booking.customer_phone}\n\n"
+                            f"*Выбранные интервалы:*\n{slots_details}\n\n"
+                            f"*Итого:* {total_price:.2f} руб.\n"
                             f"*Комментарий:* {booking.customer_comment or 'отсутствует'}"
                         )
                         send_telegram_message(message)
@@ -202,7 +215,10 @@ def booking_view(request):
                 except Exception:
                     pass
         else:
-            form = BookingForm()
+            initial_data = {}
+            if request.user.is_authenticated:
+                initial_data['customer_name'] = request.user.get_full_name() or request.user.username
+            form = BookingForm(initial=initial_data)
 
         context.update({
             'step': step, 'booking_date': booking_date,
@@ -220,6 +236,12 @@ def booking_success_view(request):
     }
     return render(request, 'booking/booking_success.html', context)
 
+from django.contrib.auth import login, authenticate, logout
+from django.conf import settings
+from django.views.decorators.http import require_GET
+import hmac
+import hashlib
+
 def home_view(request):
     rooms = Room.objects.all()
     context = {
@@ -228,3 +250,39 @@ def home_view(request):
         'rooms': rooms,
     }
     return render(request, 'booking/home.html', context)
+
+
+def login_page_view(request):
+    """
+    Страница для отображения виджета входа через Telegram.
+    """
+    if request.user.is_authenticated:
+        return redirect('home')
+    return render(request, 'booking/login.html')
+
+
+@require_GET
+def telegram_login_callback(request):
+    auth_data = request.GET.dict()
+    received_hash = auth_data.pop('hash', None)
+
+    if not received_hash:
+        return redirect('home')
+
+    sorted_keys = sorted(auth_data.keys())
+    data_check_string = "\n".join([f"{key}={auth_data[key]}" for key in sorted_keys])
+
+    secret_key = hashlib.sha256(settings.TELEGRAM_BOT_TOKEN.encode()).digest()
+    calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+
+    if calculated_hash == received_hash:
+        user = authenticate(request, telegram_data=auth_data)
+        if user is not None:
+            login(request, user)
+
+    return redirect('home')
+
+
+def logout_view(request):
+    logout(request)
+    return redirect('home')
