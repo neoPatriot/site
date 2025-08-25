@@ -16,16 +16,27 @@ RUSSIAN_MONTH_NAMES = {
 def _generate_slots(start_time, end_time, duration_minutes):
     """Генерирует список временных слотов (строк) на основе времени начала, окончания и длительности."""
     slots = []
-    current_time = datetime.datetime.combine(datetime.date.today(), start_time)
-    end_dt = datetime.datetime.combine(datetime.date.today(), end_time)
+    today = datetime.date.today()
+    current_dt = datetime.datetime.combine(today, start_time)
+    end_dt = datetime.datetime.combine(today, end_time)
+
+    # Если время окончания 00:00, считаем это концом дня (24:00)
+    if end_time == datetime.time(0, 0):
+        end_dt += datetime.timedelta(days=1)
+
     duration = datetime.timedelta(minutes=duration_minutes)
 
-    while current_time < end_dt:
-        slot_end_time = current_time + duration
-        if slot_end_time > end_dt:
+    while current_dt < end_dt:
+        slot_end_dt = current_dt + duration
+        if slot_end_dt > end_dt:
             break
-        slots.append(f"{current_time.strftime('%H:%M')}-{slot_end_time.strftime('%H:%M')}")
-        current_time += duration
+
+        start_str = current_dt.strftime('%H:%M')
+        # Если конечный слот выпадает на полночь, отображаем как 24:00 для понятности
+        end_str = "24:00" if slot_end_dt.time() == datetime.time(0, 0) else slot_end_dt.strftime('%H:%M')
+
+        slots.append(f"{start_str}-{end_str}")
+        current_dt += duration
     return slots
 
 def get_calendar_data(room, year, month):

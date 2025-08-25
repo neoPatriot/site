@@ -3,6 +3,7 @@ from django.urls import reverse
 from django.contrib.auth.models import User
 from unittest.mock import patch
 from .models import Organization, Room, ScheduleRule, Booking, BookedTimeSlot
+from .views import _generate_slots
 import json
 from rest_framework.test import APIClient
 import datetime
@@ -76,6 +77,16 @@ class BookingAppTests(TestCase):
         # Проверяем, что в сообщении нет экранированных \n и цена отформатирована
         self.assertNotIn('\\n', message)
         self.assertIn('*Итого:* 500.00 руб.', message)
+
+    def test_slot_generation_until_midnight(self):
+        """
+        Тестирует, что генерация слотов корректно обрабатывает расписание до 00:00 (полуночи).
+        """
+        start_time = datetime.time(22, 0)
+        end_time = datetime.time(0, 0) # Полночь
+        duration = 60 # минут
+        slots = _generate_slots(start_time, end_time, duration)
+        self.assertEqual(slots, ["22:00-23:00", "23:00-24:00"])
 
 
 class BookingAPITests(TestCase):
