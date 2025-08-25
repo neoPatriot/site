@@ -545,7 +545,8 @@ footer {
     font-weight: 700;
     white-space: nowrap;
 }
-.auth-block .btn-logout {
+.auth-block .btn-logout,
+.auth-block .btn-login {
     color: var(--dark-bg);
     background-color: var(--light);
     padding: 5px 15px;

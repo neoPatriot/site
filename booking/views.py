@@ -241,6 +241,15 @@ def home_view(request):
     return render(request, 'booking/home.html', context)
 
 
+def login_page_view(request):
+    """
+    Страница для отображения виджета входа через Telegram.
+    """
+    if request.user.is_authenticated:
+        return redirect('home')
+    return render(request, 'booking/login.html')
+
+
 @require_GET
 def telegram_login_callback(request):
     auth_data = request.GET.dict()

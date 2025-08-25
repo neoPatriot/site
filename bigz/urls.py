@@ -38,6 +38,7 @@ schema_view = get_schema_view(
 
 urlpatterns = [
     path("", booking_views.home_view, name="home"),
+    path("login/", booking_views.login_page_view, name="login_page"),
     path("logout/", booking_views.logout_view, name="logout"),
     path("auth/telegram/callback/", booking_views.telegram_login_callback, name="telegram_login_callback"),
     path("admin/", admin.site.urls),
