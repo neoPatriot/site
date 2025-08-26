@@ -1,0 +1,67 @@
+:root {
+    /* Цветовая палитра из брендбука */
+    --dark-bg: #111;
+    --primary: #2E86AB;
+    --secondary: #A23B72;
+    --accent: #F18F01;
+    --light: #F0F0F0;
+}
+
+body {
+    font-family: 'Montserrat', sans-serif;
+}
+
+/* --- Хедер --- */
+#header {
+    background-color: var(--dark-bg);
+    color: var(--light);
+}
+
+#header a:link, #header a:visited {
+    color: var(--light);
+}
+
+#branding h1, #branding h1 a:link, #branding h1 a:visited {
+    color: var(--accent);
+}
+
+/* --- Основной контент --- */
+a {
+    color: var(--primary);
+}
+
+a:hover {
+    color: var(--secondary);
+}
+
+.module h2, .module caption, .inline-group h2 {
+    background-color: #333;
+    color: var(--light);
+}
+
+.button, input[type=submit], input[type=button], .submit-row input, a.button {
+    background-color: var(--accent);
+    color: var(--dark-bg);
+    border-radius: 4px;
+    border: none;
+    padding: 10px 15px;
+    font-weight: 700;
+}
+
+.button:hover, input[type=submit]:hover, input[type=button]:hover, .submit-row input:hover, a.button:hover {
+    background-color: var(--secondary);
+    color: var(--light);
+}
+
+.button.default, .submit-row input.default {
+    background-color: #555;
+    color: var(--light);
+}
+.button.default:hover, .submit-row input.default:hover {
+    background-color: #777;
+}
+
+#changelist-filter h3 {
+    background-color: #333;
+    color: var(--light);
+}
