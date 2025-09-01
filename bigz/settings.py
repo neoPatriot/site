@@ -9,23 +9,31 @@ https://docs.djangoproject.com/en/5.2/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.2/ref/settings/
 """
-
+import os
 from pathlib import Path
+from dotenv import load_dotenv
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment variables from .env file
+load_dotenv(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-m46dk&0+9hzk-=c%82u52ck3xn-b0pz!6chg4sxwyhsr5n+l-p"
+# The SECRET_KEY is read from an environment variable. On the Jino hosting,
+# you will need to set the SECRET_KEY environment variable.
+SECRET_KEY = os.environ.get("SECRET_KEY", "django-insecure-m46dk&0+9hzk-=c%82u52ck3xn-b0pz!6chg4sxwyhsr5n+l-p")
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+# DEBUG is set to False for production. You can create a .env file for local
+# development to set it to True.
+DEBUG = os.environ.get("DEBUG", "False") == "True"
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['bigz.monster', 'www.bigz.monster', 'localhost', '127.0.0.1']
 
 
 # Application definition
@@ -79,7 +87,28 @@ WSGI_APPLICATION = "bigz.wsgi.application"
 
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
-
+#
+# The default database is SQLite for local development.
+# For production on Jino, you should create a MySQL or PostgreSQL database
+# and configure the settings below, reading credentials from environment variables.
+# Example for PostgreSQL:
+#
+# from urllib.parse import urlparse
+#
+# DATABASE_URL = os.environ.get("DATABASE_URL")
+# if DATABASE_URL:
+#     db_info = urlparse(DATABASE_URL)
+#     DATABASES = {
+#         'default': {
+#             'ENGINE': 'django.db.backends.postgresql',
+#             'NAME': db_info.path[1:],
+#             'USER': db_info.username,
+#             'PASSWORD': db_info.password,
+#             'HOST': db_info.hostname,
+#             'PORT': db_info.port,
+#         }
+#     }
+# else:
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -133,6 +162,11 @@ STATICFILES_DIRS = [
     BASE_DIR / "static",
 ]
 
+# This is the directory where `collectstatic` will gather all static files.
+# Your web server (Nginx/Apache) should be configured to serve files from this directory.
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+
 # Media files (User-uploaded content)
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
@@ -143,10 +177,8 @@ MEDIA_ROOT = BASE_DIR / 'media'
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Telegram Bot Settings
-# WARNING: Do not use these dummy credentials in production.
-TELEGRAM_BOT_TOKEN = "7973585745:AAFz97T9MoptzcuatQKy3pd1zbd9J-o9f5E"
-TELEGRAM_CHAT_IDS = [
-    '810564487', # Alex
-    '1098521522', # Spartak
-    '1042197487', #Luba
-]
+# These settings are read from environment variables for security.
+# You will need to set them in your Jino hosting environment.
+TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN")
+raw_chat_ids = os.environ.get("TELEGRAM_CHAT_IDS", "")
+TELEGRAM_CHAT_IDS = [chat_id.strip() for chat_id in raw_chat_ids.split(',') if chat_id.strip()]
